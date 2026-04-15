@@ -3,7 +3,7 @@ Groq-Only LLM Adapter — Wraps the Groq SDK with retry, logging, and rate limit
 
 - Reads GROQ_API_KEY from environment (raises RuntimeError at startup if missing)
 - Default model: llama-3.3-70b-versatile
-- Fallback on 429: llama-3.1-8b-instant
+- Fallback on 429: llama3-8b-8192
 - Exponential backoff: 2s, 4s, 8s then raise
 - Logs every call: model, input tokens, output tokens, latency
 """

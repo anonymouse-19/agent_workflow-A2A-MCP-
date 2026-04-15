@@ -3,10 +3,8 @@ Dynamic Planner — sends user goal + agent cards + MCP tools to Groq.
 Returns an ExecutionPlan (DAG of PlanSteps).
 """
 
-import asyncio
 import json
 import logging
-from functools import partial
 from typing import Dict, List
 
 from shared.llm_adapter import GroqAdapter
@@ -76,35 +74,24 @@ Files provided: {json.dumps(files or [])}
 
 Generate the execution plan now."""
 
-    loop = asyncio.get_event_loop()
-    raw_result = await loop.run_in_executor(
-        None,
-        partial(
-            groq.complete_json,
-            messages=[
-                {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.1,
-        ),
+    plan_raw = await groq.complete_json(
+        messages=[
+            {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.1,
     )
-    plan_raw = raw_result.get("parsed") if raw_result else None
 
     if plan_raw is None:
         # Retry once
         logger.warning("Planner: first attempt returned None, retrying...")
-        raw_result = await loop.run_in_executor(
-            None,
-            partial(
-                groq.complete_json,
-                messages=[
-                    {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.0,
-            ),
+        plan_raw = await groq.complete_json(
+            messages=[
+                {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
         )
-        plan_raw = raw_result.get("parsed") if raw_result else None
         if plan_raw is None:
             raise RuntimeError("Planner failed to produce a valid JSON plan")
 
