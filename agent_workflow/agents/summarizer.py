@@ -20,7 +20,6 @@ class SummarizerAgent(BaseAgent):
 
     def process(self, message):
         context = message.payload.get("context", {})
-        analysis = message.payload.get("analysis", {})
 
         # Collect all text from context
         text = self._assemble_text(context)
@@ -28,10 +27,21 @@ class SummarizerAgent(BaseAgent):
         if not text:
             return {"summary": "(No content to summarize)", "method": "none"}
 
+        # A2A: Request keyword analysis directly from analyzer agent
+        # (peer-to-peer communication through the MessageBus)
+        analysis = {}
+        if context:
+            keywords_result = self.request("analyzer", {
+                "operation": "extract_keywords",
+                "context": context,
+            })
+            if "keywords" in keywords_result:
+                analysis["keywords"] = keywords_result
+
         # Use MCP tool for summarization
         summary_result = self.tools.invoke("summarize_text", {"text": text})
 
-        # Build final report combining summary + analysis
+        # Build final report combining summary + A2A analysis
         report = {
             "summary": summary_result.get("summary", ""),
             "method": summary_result.get("method", ""),

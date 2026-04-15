@@ -24,7 +24,7 @@ class BaseAgent:
         self.capabilities = capabilities
         self.bus = bus
         self.tools = tools
-        bus.register_agent(name)
+        bus.register_agent(name, self)
 
     def send(self, recipient: str, payload: dict,
              msg_type: MessageType = MessageType.REQUEST,
@@ -43,6 +43,18 @@ class BaseAgent:
     def receive(self):
         """Receive the next message from this agent's queue."""
         return self.bus.receive(self.name)
+
+    def request(self, recipient: str, payload: dict) -> dict:
+        """
+        True A2A peer-to-peer communication: send a request to another
+        agent through the MessageBus and receive the response.
+        No direct method calls — all communication flows through the bus.
+        """
+        self.send(recipient, payload)
+        response = self.bus.dispatch(recipient)
+        if response:
+            return response.payload
+        return {"error": f"No response from {recipient}"}
 
     def select_tool(self, task_hint: str):
         """

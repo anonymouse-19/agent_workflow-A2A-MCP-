@@ -9,7 +9,7 @@ the MessageBus as discrete Message objects.
 from collections import defaultdict, deque
 from typing import Optional, List
 
-from .models import Message
+from .models import Message, MessageType
 
 
 class MessageBus:
@@ -27,12 +27,37 @@ class MessageBus:
         self._queues: dict = defaultdict(deque)
         self._message_log: List[Message] = []
         self._registered_agents: set = set()
+        self._agents: dict = {}  # name → agent instance (for A2A dispatch)
 
-    def register_agent(self, agent_name: str):
+    def register_agent(self, agent_name: str, agent_instance=None):
         """Register an agent so it can send/receive messages."""
         self._registered_agents.add(agent_name)
-        # Ensure orchestrator is always a valid sender
         self._registered_agents.add("orchestrator")
+        if agent_instance is not None:
+            self._agents[agent_name] = agent_instance
+
+    def dispatch(self, recipient: str):
+        """
+        A2A dispatch: deliver the next queued message to the recipient,
+        let the agent process it, and return the response Message.
+        Both request and response are logged for observability.
+        """
+        agent = self._agents.get(recipient)
+        if not agent:
+            return None
+        msg = self.receive(recipient)
+        if not msg:
+            return None
+        result = agent.process(msg)
+        response = Message(
+            sender=recipient,
+            recipient=msg.sender,
+            msg_type=MessageType.RESPONSE,
+            payload=result if isinstance(result, dict) else {"result": result},
+            correlation_id=msg.correlation_id,
+        )
+        self._message_log.append(response)
+        return response
 
     def send(self, message: Message):
         """Send a message to a specific agent's queue."""

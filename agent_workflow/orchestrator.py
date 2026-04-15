@@ -40,7 +40,10 @@ class Orchestrator:
         )
 
         self.trace.log("planner", "PLANNING", f"Analyzing task to create execution plan")
-        plan_result = planner.process(plan_msg)
+        # A2A: Route planning request through the bus
+        self.bus.send(plan_msg)
+        plan_response = self.bus.dispatch("planner")
+        plan_result = plan_response.payload if plan_response else {}
         plan: ExecutionPlan = plan_result["plan"]
 
         # Display the generated plan
@@ -71,17 +74,7 @@ class Orchestrator:
             # Build message payload with shared context
             payload = {**step.params, "context": context}
 
-            # For summarizer: include analysis results from earlier steps
-            if step.agent == "summarizer":
-                analysis = {}
-                for prev in plan.steps:
-                    if prev.status == "completed" and prev.action in (
-                        "analyze_data", "extract_questions", "extract_keywords"
-                    ):
-                        analysis[prev.action] = prev.result
-                payload["analysis"] = analysis
-
-            # A2A: Send message to agent
+            # A2A: Send message to agent through the bus
             msg = Message(
                 sender="orchestrator",
                 recipient=step.agent,
@@ -95,8 +88,10 @@ class Orchestrator:
             )
 
             try:
-                # A2A: Agent processes the message and returns result
-                result = agent.process(msg)
+                # A2A: Route through bus — agent picks up from its queue
+                self.bus.send(msg)
+                response = self.bus.dispatch(step.agent)
+                result = response.payload if response else {"error": f"No response from {step.agent}"}
 
                 if isinstance(result, dict) and "error" in result:
                     step.status = "failed"
