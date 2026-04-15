@@ -1,0 +1,25 @@
+{
+  "name": "analyzer",
+  "url": "http://localhost:8002",
+  "description": "Performs analysis operations on content including question extraction, keyword analysis, and tabular data statistics with anomaly detection and trend identification.",
+  "capabilities": [
+    {
+      "name": "question_extraction",
+      "description": "Extract clinical questions from text content"
+    },
+    {
+      "name": "keyword_extraction",
+      "description": "Extract important keywords and topics from text"
+    },
+    {
+      "name": "data_analysis",
+      "description": "Compute statistics, detect anomalies, and identify trends in tabular data"
+    },
+    {
+      "name": "clinical_interpretation",
+      "description": "Generate natural language interpretations of clinical data via LLM"
+    }
+  ],
+  "inputModes": ["application/json"],
+  "outputModes": ["application/json"]
+}

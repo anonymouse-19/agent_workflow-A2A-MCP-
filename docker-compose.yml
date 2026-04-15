@@ -1,0 +1,132 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 3
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m mcp_server.server
+    ports:
+      - "8004:8004"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_DEFAULT_MODEL=${GROQ_DEFAULT_MODEL:-llama-3.3-70b-versatile}
+      - GROQ_FALLBACK_MODEL=${GROQ_FALLBACK_MODEL:-llama-3.1-8b-instant}
+    volumes:
+      - ./mcp_server:/app/mcp_server
+      - ./sample_data:/app/sample_data
+      - uploads:/app/uploads
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  reader-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m agents.reader.main
+    ports:
+      - "8001:8001"
+    environment:
+      - MCP_SERVER_URL=http://mcp-server:8004
+      - READER_AGENT_URL=http://reader-agent:8001
+      - REDIS_URL=redis://redis:6379/0
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - READER_PORT=8001
+    volumes:
+      - ./agents:/app/agents
+      - ./sample_data:/app/sample_data
+      - uploads:/app/uploads
+    depends_on:
+      - mcp-server
+
+  analyzer-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m agents.analyzer.main
+    ports:
+      - "8002:8002"
+    environment:
+      - MCP_SERVER_URL=http://mcp-server:8004
+      - ANALYZER_AGENT_URL=http://analyzer-agent:8002
+      - READER_AGENT_URL=http://reader-agent:8001
+      - REDIS_URL=redis://redis:6379/0
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - ANALYZER_PORT=8002
+    volumes:
+      - ./agents:/app/agents
+      - ./sample_data:/app/sample_data
+      - uploads:/app/uploads
+    depends_on:
+      - mcp-server
+      - reader-agent
+
+  summarizer-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m agents.summarizer.main
+    ports:
+      - "8003:8003"
+    environment:
+      - MCP_SERVER_URL=http://mcp-server:8004
+      - SUMMARIZER_AGENT_URL=http://summarizer-agent:8003
+      - REDIS_URL=redis://redis:6379/0
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - SUMMARIZER_PORT=8003
+    volumes:
+      - ./agents:/app/agents
+      - ./sample_data:/app/sample_data
+      - uploads:/app/uploads
+    depends_on:
+      - mcp-server
+
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: python -m orchestrator.main
+    ports:
+      - "8000:8000"
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_DEFAULT_MODEL=${GROQ_DEFAULT_MODEL:-llama-3.3-70b-versatile}
+      - GROQ_FALLBACK_MODEL=${GROQ_FALLBACK_MODEL:-llama-3.1-8b-instant}
+      - MCP_SERVER_URL=http://mcp-server:8004
+      - AGENT_URLS=http://reader-agent:8001,http://analyzer-agent:8002,http://summarizer-agent:8003
+      - REDIS_URL=redis://redis:6379/0
+      - ORCHESTRATOR_PORT=8000
+    volumes:
+      - ./orchestrator:/app/orchestrator
+      - ./sample_data:/app/sample_data
+      - uploads:/app/uploads
+    depends_on:
+      - redis
+      - mcp-server
+      - reader-agent
+      - analyzer-agent
+      - summarizer-agent
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - orchestrator
+
+volumes:
+  uploads:

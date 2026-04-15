@@ -1,0 +1,25 @@
+{
+  "name": "reader",
+  "url": "http://localhost:8001",
+  "description": "Reads files using appropriate MCP tools. Supports PDF, Excel, and plain text files for healthcare data processing.",
+  "capabilities": [
+    {
+      "name": "file_reading",
+      "description": "Read and extract content from various file formats"
+    },
+    {
+      "name": "pdf_reading",
+      "description": "Extract text content from PDF clinical reports"
+    },
+    {
+      "name": "excel_reading",
+      "description": "Read patient data from Excel spreadsheets"
+    },
+    {
+      "name": "text_reading",
+      "description": "Read plain text clinical documents"
+    }
+  ],
+  "inputModes": ["application/json"],
+  "outputModes": ["application/json"]
+}

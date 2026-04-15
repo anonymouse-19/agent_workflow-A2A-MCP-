@@ -1,0 +1,21 @@
+{
+  "name": "summarizer",
+  "url": "http://localhost:8003",
+  "description": "Creates summaries and compiles final clinical reports. Produces structured clinical briefs with key findings, questions identified, statistical summary, and recommendations.",
+  "capabilities": [
+    {
+      "name": "text_summarization",
+      "description": "Create extractive summaries of clinical text"
+    },
+    {
+      "name": "clinical_brief",
+      "description": "Produce structured clinical briefs with findings and recommendations via LLM"
+    },
+    {
+      "name": "report_compilation",
+      "description": "Compile analysis results into a coherent final report"
+    }
+  ],
+  "inputModes": ["application/json"],
+  "outputModes": ["application/json"]
+}
